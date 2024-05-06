@@ -21,11 +21,6 @@
   :type 'string
   :group 'clingo-ts-mode)
 
-;; (setq-local treesit-simple-indent-rules
-;;     `((clingo
-
-;;        )))
-
 (defvar clingo-ts-font-lock-rules
   '(:language clingo
     :feature variable
@@ -61,9 +56,7 @@
 
     :language clingo
     :feature function
-    ([(function)] @font-lock-function-call-face)
-
-    )
+    ([(function)] @font-lock-function-call-face))
 
 (setq-local treesit-font-lock-settings
             (apply #'treesit-font-lock-rules
@@ -90,6 +83,17 @@
 
   (treesit-major-mode-setup))
 
+(defun run-clingo-on-file ()
+  (interactive)
+  (let ((clingo-buffer (get-buffer-create "* clingo *")))
+    (with-current-buffer clingo-buffer
+      (process-file "clingo" nil t)
+      (insert "\n --- \n")
+      (goto-char (point-max))
+      )
+    )
+  )
+
 
 ;;; define clingo-ts-mode
 ;;;###autoload
@@ -99,6 +103,7 @@
     (treesit-parser-create 'clingo)
     (clingo-ts-setup)))
 
+(define-key clingo-ts-mode-map (kbd "C-c C-c C-f") #'run-clingo-on-file)
 
 (provide 'clingo-ts-mode)
 
