@@ -83,16 +83,28 @@
 
   (treesit-major-mode-setup))
 
-(defun run-clingo-on-file ()
+(defun run-clingo-on-current-file ()
   (interactive)
+  (run-clingo (buffer-file-name) nil))
+
+(defun run-clingo (file args)
+
   (let ((clingo-buffer (get-buffer-create "* clingo *")))
     (with-current-buffer clingo-buffer
-      (process-file "clingo" nil t)
+      (call-process "clingo" file clingo-buffer nil "-n0")
       (insert "\n --- \n")
       (goto-char (point-max))
       )
+    (display-buffer clingo-buffer)
     )
+
   )
+
+(defun run-clingo-on-current-region (start end)
+  (interactive "r")
+  (let ((temp-file (make-temp-file "clingo-region" nil ".lp" nil)))
+    (write-region start end temp-file t)
+    (run-clingo temp-file nil)))
 
 
 ;;; define clingo-ts-mode
@@ -103,7 +115,8 @@
     (treesit-parser-create 'clingo)
     (clingo-ts-setup)))
 
-(define-key clingo-ts-mode-map (kbd "C-c C-c C-f") #'run-clingo-on-file)
+(define-key clingo-ts-mode-map (kbd "C-c C-c C-f") #'run-clingo-on-current-file)
+(define-key clingo-ts-mode-map (kbd "C-c C-c C-r") #'run-clingo-on-current-region)
 
 (provide 'clingo-ts-mode)
 
