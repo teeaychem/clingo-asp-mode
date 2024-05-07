@@ -89,16 +89,21 @@
 (defun run-clingo-on-current-file ()
   "Run clingo on the file opened in the current buffer."
   (interactive)
-  (run-clingo (buffer-file-name) nil))
+  (let ((this-file (buffer-file-name)))
+    (run-clingo this-file "")))
 
 
 (defun run-clingo (file args)
   "Run clingo on FILE with ARGS."
-  (let ((clingo-buffer (get-buffer-create "* clingo *")))
-    (with-current-buffer clingo-buffer
-      (call-process "clingo" file clingo-buffer nil args)
-      (insert "\n --- \n")
-      (goto-char (point-max)))
+  (let ((clingo-buffer (get-buffer-create "* clingo *"))
+        (command (concat "clingo " file " " args)))
+    (async-shell-command command clingo-buffer)
+    ;; (with-current-buffer clingo-buffer
+      ;; (call-process "clingo" nil clingo-buffer nil (concat file " " args))
+      ;; (start-process "clingo" clingo-buffer "clingo" "")
+
+      ;; (insert "\n --- \n")
+      ;; (goto-char (point-max)))
     (display-buffer clingo-buffer)))
 
 
@@ -107,7 +112,7 @@
   (interactive "r")
   (let ((temp-file (make-temp-file "clingo-region" nil ".lp" nil)))
     (write-region start end temp-file t)
-    (run-clingo temp-file nil)))
+    (run-clingo temp-file "")))
 
 
 (defgroup clingo-command nil
@@ -117,7 +122,8 @@
 ;; (string-join args " ")
 
 (defcustom clingo-command-list
-  '(("clingo" "")
+  '(("clingo" " ")
+    ("all models" "--models=0")
     ("subset minimal" "--models=0 --enum-mode=domRec --heuristic=Domain --dom-mod=5,16"))
   "This is where the comment goes."
   :group 'clingo-command
@@ -139,24 +145,24 @@
       (car-safe (cdr-safe (assoc-string default clingo-command-list))))))
 
 
-(defun clingo-command-main ()
+(defun clingo-command-main (file)
   "Ah heck."
-  (interactive)
+  (interactive "f")
   (let ((option (clingo-command-query)))
-    (run-clingo (buffer-file-name) option)))
+    (run-clingo file option)))
 
 
 ;;; define clingo-ts-mode
 ;;;###autoload
-(define-derived-mode clingo-ts-mode prog-mode "clingo[ts]"
+(define-derived-mode clingo-ts-mode prog-mode "clingo"
   (setq-local font-lock-defaults nil)
   (when (treesit-ready-p 'clingo)
     (treesit-parser-create 'clingo)
     (clingo-ts-setup)))
 
-(define-key clingo-ts-mode-map (kbd "C-c C-c C-f") #'run-clingo-on-current-file)
-(define-key clingo-ts-mode-map (kbd "C-c C-c C-r") #'run-clingo-on-current-region)
-(define-key clingo-ts-mode-map (kbd "C-c C-c C-c") #'clingo-command-main)
+(define-key clingo-ts-mode-map (kbd "C-c C-f") #'run-clingo-on-current-file)
+(define-key clingo-ts-mode-map (kbd "C-c C-r") #'run-clingo-on-current-region)
+(define-key clingo-ts-mode-map (kbd "C-c C-c") #'clingo-command-main)
 
 (provide 'clingo-ts-mode)
 
