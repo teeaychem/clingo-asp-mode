@@ -23,6 +23,11 @@
   :type 'string
   :group 'clingo-ts-mode)
 
+(defcustom clingo-ts-indentation 2
+  "Level of indentation."
+  :type 'integer
+  :group 'clingo-ts-mode)
+
 
 (defvar clingo-ts-font-lock-rules
   '(:language clingo
@@ -156,6 +161,9 @@
 ;;;###autoload
 (define-derived-mode clingo-ts-mode prog-mode "clingo"
   (setq-local font-lock-defaults nil)
+  (setq-local comment-start "%")
+  (setq-local comment-end "")
+  (setq-local tab-width clingo-ts-indentation)
   (when (treesit-ready-p 'clingo)
     (treesit-parser-create 'clingo)
     (clingo-ts-setup)))
