@@ -97,19 +97,27 @@
   (let ((this-file (buffer-file-name)))
     (run-clingo this-file "")))
 
+(defun decode-exit (_process-status exit-status msg)
+  (concat "----" msg exit-status))
 
-(defun run-clingo (file args)
-  "Run clingo on FILE with ARGS."
-  (let ((clingo-buffer (get-buffer-create "* clingo *"))
-        (command (concat "clingo " file " " args)))
-    (async-shell-command command clingo-buffer)
-    ;; (with-current-buffer clingo-buffer
-      ;; (call-process "clingo" nil clingo-buffer nil (concat file " " args))
-      ;; (start-process "clingo" clingo-buffer "clingo" "")
 
+(defun run-clingo (file split-args)
+  "Run clingo on FILE with AR3GS."
+  (when (get-buffer "*clingo output*")
+    (kill-buffer "*clingo output*"))
+  (let* ((clingo-program (executable-find "clingo"))
+         ;; (split-args (split-string arg-string))
+         (split-args-file (nconc split-args (list (file-truename file))))
+         (clingo-buffer (get-buffer-create "*clingo output*"))
+         (all-args (cons "clingo" (cons "*clingo output*" (cons clingo-program split-args-file)))))
+    (apply #'start-process all-args)
+    (with-current-buffer clingo-buffer
+      (clingo-ts-mode)
       ;; (insert "\n --- \n")
-      ;; (goto-char (point-max)))
-    (display-buffer clingo-buffer)))
+      ;; (goto-char (point-max))
+      )
+    (display-buffer clingo-buffer)
+    ))
 
 
 (defun run-clingo-on-current-region (start end)
@@ -127,12 +135,12 @@
 ;; (string-join args " ")
 
 (defcustom clingo-command-list
-  '(("clingo" " ")
-    ("all models" "--models=0")
-    ("subset minimal" "--models=0 --enum-mode=domRec --heuristic=Domain --dom-mod=5,16"))
+  '(("clingo" ())
+    ("all models" ("--models=0"))
+    ("subset minimal" ("--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16")))
   "This is where the comment goes."
   :group 'clingo-command
-  :type '(repeat (group (string :tag "Name") (string :tag "Commands"))))
+  :type '(repeat (group (string :tag "Name") (string :tag "Command"))))
 
 
 
