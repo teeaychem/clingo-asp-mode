@@ -94,20 +94,31 @@
 ;;   (concat "----" msg exit-status))
 
 
+(defun clingo-process-exit (process-name)
+  "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits."
+  (lambda (process event)
+    (let ((process-buffer (get-buffer process-name)))
+      (with-current-buffer process-buffer
+        (insert "\n")
+        (insert "cheeky")
+        (special-mode)
+        (goto-char (point-min)))
+      ;; (pop-to-buffer process-buffer)
+      (princ (format "Process: %s %s" process event)))))
+
+
 (defun run-clingo (file args)
   "Run clingo on FILE with ARGS."
   ;; (when (get-buffer "*clingo output*") (kill-buffer "*clingo output*"))
   (let* ((clingo-program (executable-find "clingo"))
-         ;; (args (split-string arg-string))
          (args-file (nconc args (list (file-truename file))))
-         (clingo-buffer (get-buffer-create "*clingo output*"))
-         (all-args (cons "clingo" (cons "*clingo output*" (cons clingo-program args-file)))))
+         ;; (clingo-buffer (get-buffer-create "*clingo output*")) ;; todo: make a toggle
+         (clingo-process (generate-new-buffer-name "*clingo*"))
+         (clingo-buffer (get-buffer-create clingo-process))
+         (all-args (cons clingo-process (cons clingo-buffer (cons clingo-program args-file)))))
     (apply #'start-process all-args)
-    (with-current-buffer clingo-buffer
-      (clingo-ts-mode)
-      (goto-char (point-max))
-      (insert "\n\n"))
-    (display-buffer clingo-buffer)))
+    (set-process-sentinel (get-process clingo-process) (clingo-process-exit clingo-process))
+    (pop-to-buffer clingo-buffer)))
 
 
 (defun run-clingo-on-current-file ()
@@ -181,7 +192,6 @@ Then, call `run-clingo' on FILE with those arguments."
 (define-key clingo-ts-mode-map (kbd "C-c C-c") #'run-clingo-on-current-file)
 (define-key clingo-ts-mode-map (kbd "C-c C-r") #'run-clingo-on-current-region)
 (define-key clingo-ts-mode-map (kbd "C-c C-f") #'run-clingo-file-choice)
-
 
 
 (provide 'clingo-ts-mode)
