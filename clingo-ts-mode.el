@@ -66,6 +66,7 @@
     :feature function
     ([(function)] @font-lock-function-call-face))
 
+
 (setq-local treesit-font-lock-settings
             (apply #'treesit-font-lock-rules
                  clingo-ts-font-lock-rules)))
@@ -73,9 +74,7 @@
 
 (defun clingo-ts-setup ()
   "Setup for `clingo-ts-mode'."
-  (setq-local treesit-font-lock-settings
-              (apply #'treesit-font-lock-rules
-                     clingo-ts-font-lock-rules))
+  (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules clingo-ts-font-lock-rules))
   (setq-local font-lock-defaults nil)
   (setq-local treesit-font-lock-feature-list
               '((punctuation
@@ -87,37 +86,35 @@
                  operator
                  function
                  string)))
-
-
   (treesit-major-mode-setup))
 
-(defun run-clingo-on-current-file ()
-  "Run clingo on the file opened in the current buffer."
-  (interactive)
-  (let ((this-file (buffer-file-name)))
-    (run-clingo this-file "")))
-
-(defun decode-exit (_process-status exit-status msg)
-  (concat "----" msg exit-status))
+;; TODO: Natural language translation of exit codes from here:
+;; https://github.com/potassco/clasp/issues/42#issuecomment-459981038%3E
+;; (defun decode-exit (_process-status exit-status msg)
+;;   (concat "----" msg exit-status))
 
 
-(defun run-clingo (file split-args)
-  "Run clingo on FILE with AR3GS."
-  (when (get-buffer "*clingo output*")
-    (kill-buffer "*clingo output*"))
+(defun run-clingo (file args)
+  "Run clingo on FILE with ARGS."
+  ;; (when (get-buffer "*clingo output*") (kill-buffer "*clingo output*"))
   (let* ((clingo-program (executable-find "clingo"))
-         ;; (split-args (split-string arg-string))
-         (split-args-file (nconc split-args (list (file-truename file))))
+         ;; (args (split-string arg-string))
+         (args-file (nconc args (list (file-truename file))))
          (clingo-buffer (get-buffer-create "*clingo output*"))
-         (all-args (cons "clingo" (cons "*clingo output*" (cons clingo-program split-args-file)))))
+         (all-args (cons "clingo" (cons "*clingo output*" (cons clingo-program args-file)))))
     (apply #'start-process all-args)
     (with-current-buffer clingo-buffer
       (clingo-ts-mode)
-      ;; (insert "\n --- \n")
-      ;; (goto-char (point-max))
-      )
-    (display-buffer clingo-buffer)
-    ))
+      (goto-char (point-max))
+      (insert "\n\n"))
+    (display-buffer clingo-buffer)))
+
+
+(defun run-clingo-on-current-file ()
+  "Call `run-clingo-choice' on the file opened in the current buffer."
+  (interactive)
+  (let ((this-file (buffer-file-name)))
+    (run-clingo-choice this-file)))
 
 
 (defun run-clingo-on-current-region (start end)
@@ -125,27 +122,25 @@
   (interactive "r")
   (let ((temp-file (make-temp-file "clingo-region" nil ".lp" nil)))
     (write-region start end temp-file t)
-    (run-clingo temp-file "")))
+    (run-clingo-choice temp-file)))
 
 
 (defgroup clingo-command nil
   "Commands used by `clingo-ts-mode'."
   :group 'clingo-ts-mode)
 
-;; (string-join args " ")
 
 (defcustom clingo-command-list
-  '(("clingo" ())
-    ("all models" ("--models=0"))
-    ("subset minimal" ("--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16")))
-  "This is where the comment goes."
+  '(("Vanilla" ())
+    ("All models" ("--models=0"))
+    ("All subset minimal models" ("--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16")))
+  "A list of descriptions and corresponding arguments to pass to clingo."
   :group 'clingo-command
   :type '(repeat (group (string :tag "Name") (string :tag "Command"))))
 
 
-
 (defun clingo-command-query ()
-  "Uh."
+  "Query user for arguments to pass to clingo."
   (let* ((default "clingo")
          (completion-ignore-case t)
          (answer (completing-read
@@ -158,11 +153,17 @@
       (car-safe (cdr-safe (assoc-string default clingo-command-list))))))
 
 
-(defun clingo-command-main (file)
-  "Ah heck."
-  (interactive "f")
+(defun run-clingo-choice (file)
+  "Interactively select arguments.
+Then, call `run-clingo' on FILE with those arguments."
   (let ((option (clingo-command-query)))
     (run-clingo file option)))
+
+
+(defun run-clingo-file-choice (file)
+  "Call `run-clingo-choice' on interactively chosen FILE."
+  (interactive "f")
+  (run-clingo-choice file))
 
 
 ;;; define clingo-ts-mode
@@ -176,11 +177,13 @@
     (treesit-parser-create 'clingo)
     (clingo-ts-setup)))
 
-(define-key clingo-ts-mode-map (kbd "C-c C-f") #'run-clingo-on-current-file)
+
+(define-key clingo-ts-mode-map (kbd "C-c C-c") #'run-clingo-on-current-file)
 (define-key clingo-ts-mode-map (kbd "C-c C-r") #'run-clingo-on-current-region)
-(define-key clingo-ts-mode-map (kbd "C-c C-c") #'clingo-command-main)
+(define-key clingo-ts-mode-map (kbd "C-c C-f") #'run-clingo-file-choice)
+
+
 
 (provide 'clingo-ts-mode)
-
 
 ;;; clingo-ts-mode.el ends here
