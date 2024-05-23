@@ -88,10 +88,35 @@
                  string)))
   (treesit-major-mode-setup))
 
-;; TODO: Natural language translation of exit codes from here:
-;; https://github.com/potassco/clasp/issues/42#issuecomment-459981038%3E
-;; (defun decode-exit (_process-status exit-status msg)
-;;   (concat "----" msg exit-status))
+
+
+(defun decode-exit (code)
+  "Representation and translation of CODE."
+  ;; seehttps://github.com/potassco/clasp/issues/42#issuecomment-459981038%3E
+  (let ((info-string ""))
+    (defun format-helper (enum comment)
+      (setq info-string (concat info-string (format "\n%-14s %s" enum comment))))
+    (if (= code 0)
+        (format-helper "E_UNKNOWN" "Satisfiablity of problem not known; search not started."))
+    (if (>= code 128)
+        (progn (setq code (- code 128))
+               (format-helper "E_NO_RUN" "Search not started because of syntax or command line error.")))
+    (if (>= code 65)
+        (progn (setq code (- code 65))
+               (format-helper "E_ERROR" "Run was interrupted by internal error.")))
+    (if (>= code 33)
+        (progn (setq code (- code 33))
+        (format-helper "E_MEMORY" "Run was interrupted by out of memory exception.")))
+    (if (>= code 20)
+        (progn (setq code (- code 20))
+               (format-helper "E_EXHAUST" "Search-space was completely examined.")))
+    (if (>= code 10)
+        (progn (setq code (- code 10))
+               (format-helper "E_SAT" "At least one model was found.")))
+    (if (>= code 1)
+        (format-helper "E_INTERRUPT" "Run was interrupted."))
+    info-string))
+
 
 
 (defun clingo-process-exit (process-name)
@@ -99,8 +124,7 @@
   (lambda (process event)
     (let ((process-buffer (get-buffer process-name)))
       (with-current-buffer process-buffer
-        (insert "\n")
-        (insert "cheeky")
+        (insert (format "%s" (decode-exit (string-to-number (car (last (split-string event)))))))
         (special-mode)
         (goto-char (point-min)))
       ;; (pop-to-buffer process-buffer)
@@ -108,11 +132,9 @@
 
 
 (defun run-clingo (file args)
-  "Run clingo on FILE with ARGS."
-  ;; (when (get-buffer "*clingo output*") (kill-buffer "*clingo output*"))
+  "Run clingo on FILE with ARGS as a new process with it's own buffer."
   (let* ((clingo-program (executable-find "clingo"))
          (args-file (nconc args (list (file-truename file))))
-         ;; (clingo-buffer (get-buffer-create "*clingo output*")) ;; todo: make a toggle
          (clingo-process (generate-new-buffer-name "*clingo*"))
          (clingo-buffer (get-buffer-create clingo-process))
          (all-args (cons clingo-process (cons clingo-buffer (cons clingo-program args-file)))))
