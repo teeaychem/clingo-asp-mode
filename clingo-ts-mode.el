@@ -89,47 +89,51 @@
   (treesit-major-mode-setup))
 
 
+(defconst exit-codes
+  '((128 "E_NO_RUN" "Search not started because of syntax or command line error.")
+    (65 "E_ERROR" "Run was interrupted by internal error.")
+    (33 "E_MEMORY" "Run was interrupted by out of memory exception.")
+    (20 "E_EXHAUST" "Search-space was completely examined.")
+    (10 "E_SAT" "At least one model was found.")
+    (1 "E_INTERRUPT" "Run was interrupted.")
+    (0 "E_UNKNOWN" "Satisfiablity of problem not known; search not started.")))
+
 
 (defun decode-exit (code)
-  "Representation and translation of CODE."
-  ;; seehttps://github.com/potassco/clasp/issues/42#issuecomment-459981038%3E
-  (let ((info-string ""))
-    (defun format-helper (enum comment)
-      ;; (setq info-string (concat info-string (format "%-14s (%s)" enum comment))))
-      (setq info-string (concat info-string (format "%s (%s)" enum comment))))
-    (if (= code 0)
-        (format-helper "E_UNKNOWN" "Satisfiablity of problem not known; search not started."))
-    (if (>= code 128)
-        (progn (setq code (- code 128))
-               (format-helper "E_NO_RUN" "Search not started because of syntax or command line error.")))
-    (if (>= code 65)
-        (progn (setq code (- code 65))
-               (format-helper "E_ERROR" "Run was interrupted by internal error.")))
-    (if (>= code 33)
-        (progn (setq code (- code 33))
-        (format-helper "E_MEMORY" "Run was interrupted by out of memory exception.")))
-    (if (>= code 20)
-        (progn (setq code (- code 20))
-               (format-helper "E_EXHAUST" "Search-space was completely examined.")))
-    (if (>= code 10)
-        (progn (setq code (- code 10))
-               (format-helper "E_SAT" "At least one model was found.")))
-    (if (>= code 1)
-        (format-helper "E_INTERRUPT" "Run was interrupted."))
-    info-string))
+  "Decode CODE into a list of base codes."
+  ;; see https://github.com/potassco/clasp/issues/42#issuecomment-459981038%3E
+  (let ((decomposed '()))
+    (defun process-code (number)
+      (setq code (- code number))
+      (setq decomposed (cons number decomposed)))
+    (if (= code 0) (process-code 0))
+    (if (>= code 128) (process-code 128))
+    (if (>= code 65) (process-code 65))
+    (if (>= code 33) (process-code 33))
+    (if (>= code 20) (process-code 20))
+    (if (>= code 10) (process-code 10))
+    (if (>= code 1) (process-code 1))
+    (codes-to-string decomposed)))
 
+
+(defun codes-to-string (codes)
+  "Return a summary string of CODES."
+  (let* ((code-sym (string-join (mapcar (lambda (x) (cadr (assoc x exit-codes))) codes)" + "))
+         (code-exp (string-join (mapcar (lambda (x) (caddr (assoc x exit-codes))) codes) " ")))
+    (format "%s (%s)" code-sym code-exp)))
 
 
 (defun clingo-process-exit (process-name)
   "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits."
   (lambda (process event)
-    (let ((process-buffer (get-buffer process-name)))
+    (let ((process-buffer (get-buffer process-name))
+          (the-code (string-to-number (car (last (split-string event))))))
       (if (equal (substring event 0 27) "exited abnormally with code")
           (progn
             (with-current-buffer process-buffer
               (special-mode)
               (goto-char (point-min)))
-            (princ (format "Process: %s exited with: %s" process (decode-exit (string-to-number (car (last (split-string event))))))))))))
+            (princ (format "Process: %s exited with: %s" process (decode-exit the-code))))))))
 
 
 (defun run-clingo (file args)
