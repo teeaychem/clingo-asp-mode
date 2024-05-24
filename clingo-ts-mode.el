@@ -171,10 +171,13 @@
 
 
 (defcustom clingo-command-list
-  '(("Vanilla" ())
-    ("All models" ("--models=0"))
-    ("All subset minimal models" ("--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16")))
-  "A list of descriptions and corresponding arguments to pass to clingo."
+  '(("Vanilla" (identity '()))
+    ("All models" (identity "--models=0"))
+    ("All subset minimal models" (identity "--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16"))
+    ("Custom"  (string-split (read-string "Enter commands:")))
+    ("n models" (string-split (format "--models=%s" (read-string "Enter the number of models:")))))
+  "Descriptions and paired functions which generate arguments to pass to clingo.
+Functions return a list of strings where each sting is a unique argument."
   :group 'clingo-command
   :type '(repeat (group (string :tag "Name") (string :tag "Command"))))
 
@@ -187,10 +190,9 @@
                   (concat "Command (default " default "): ")
                   clingo-command-list nil t
                   nil nil default)))
-    (if (and answer
-             (not (string-equal answer "")))
-        (car-safe (cdr-safe (assoc-string answer clingo-command-list)))
-      (car-safe (cdr-safe (assoc-string default clingo-command-list))))))
+    (cond ((and answer (not (string-equal answer "")))
+           (eval (car-safe (cdr-safe (assoc-string answer clingo-command-list)))))
+          (t (car-safe (cdr-safe (assoc-string default clingo-command-list)))))))
 
 
 (defun run-clingo-choice (file)
