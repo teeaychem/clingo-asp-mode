@@ -171,21 +171,38 @@
 
 
 (defcustom clingo-command-list
-  '(("Vanilla" (identity '()))
-    ("All models" (identity "--models=0"))
-    ("All subset minimal models" (identity "--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16"))
-    ("Custom"  (string-split (read-string "Enter commands:")))
-    ("n models" (string-split (format "--models=%s" (read-string "Enter the number of models:")))))
+  '(("Vanilla" (identity "") "no arguments")
+    ("All models" (identity "--models=0") "")
+    ("All subset minimal models" (identity "--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16") "")
+    ("Custom"  (string-split (read-string "Enter commands:")) "enter commands in a prompt")
+    ("n models" (string-split (format "--models=%s" (read-string "Enter the number of models:"))) "--models=n"))
   "Descriptions and paired functions which generate arguments to pass to clingo.
-Functions return a list of strings where each sting is a unique argument."
+Functions return a list of strings where each sting is a unique argument.
+The third element is a description to be used by `annotate-command'"
   :group 'clingo-command
   :type '(repeat (group (string :tag "Name") (string :tag "Command"))))
+
+
+(defun annotate-command (command)
+  "Determine formatting based on COMMAND.
+If COMMAND uses identity for a static list and description is given,
+concatendate the list.
+Otherwise, use the description given in the command-list."
+  (let* ((associated-list (assoc command clingo-command-list))
+        (eval-as-string (format "%s" (caadr associated-list)))
+        (the-string
+         (cond ((and (string-equal eval-as-string "identity") (string-equal (caddr associated-list) ""))
+                (format "%s" (string-join (cdadr associated-list) " ")))
+               (t (caddr associated-list)))))
+    (format "\t\t(%s)" the-string)))
 
 
 (defun clingo-command-query ()
   "Query user for arguments to pass to clingo."
   (let* ((default "clingo")
          (completion-ignore-case t)
+         (completion-extra-properties
+          '(:annotation-function annotate-command))
          (answer (completing-read
                   (concat "Command (default " default "): ")
                   clingo-command-list nil t
