@@ -95,7 +95,8 @@
   ;; seehttps://github.com/potassco/clasp/issues/42#issuecomment-459981038%3E
   (let ((info-string ""))
     (defun format-helper (enum comment)
-      (setq info-string (concat info-string (format "\n%-14s %s" enum comment))))
+      ;; (setq info-string (concat info-string (format "%-14s (%s)" enum comment))))
+      (setq info-string (concat info-string (format "%s (%s)" enum comment))))
     (if (= code 0)
         (format-helper "E_UNKNOWN" "Satisfiablity of problem not known; search not started."))
     (if (>= code 128)
@@ -123,12 +124,12 @@
   "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits."
   (lambda (process event)
     (let ((process-buffer (get-buffer process-name)))
-      (with-current-buffer process-buffer
-        (insert (format "%s" (decode-exit (string-to-number (car (last (split-string event)))))))
-        (special-mode)
-        (goto-char (point-min)))
-      ;; (pop-to-buffer process-buffer)
-      (princ (format "Process: %s %s" process event)))))
+      (if (equal (substring event 0 27) "exited abnormally with code")
+          (progn
+            (with-current-buffer process-buffer
+              (special-mode)
+              (goto-char (point-min)))
+            (princ (format "Process: %s exited with: %s" process (decode-exit (string-to-number (car (last (split-string event))))))))))))
 
 
 (defun run-clingo (file args)
@@ -136,10 +137,12 @@
   (let* ((clingo-program (executable-find "clingo"))
          (args-file (nconc args (list (file-truename file))))
          (clingo-process (generate-new-buffer-name "*clingo*"))
-         (clingo-buffer (get-buffer-create clingo-process))
-         (all-args (cons clingo-process (cons clingo-buffer (cons clingo-program args-file)))))
-    (apply #'start-process all-args)
-    (set-process-sentinel (get-process clingo-process) (clingo-process-exit clingo-process))
+         (clingo-buffer (get-buffer-create clingo-process)))
+    (apply #'make-process
+           (list :name clingo-process
+                 :buffer clingo-buffer
+                 :command (cons clingo-program args-file)
+                 :sentinel (clingo-process-exit clingo-process)))
     (pop-to-buffer clingo-buffer)))
 
 
