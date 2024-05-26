@@ -5,66 +5,27 @@
 ;; no commentary for the moment
 
 ;;; Code:
+(defgroup clingo-asp nil
+  "Commands used by `clingo-asp-mode'."
+  :group 'clingo-asp)
 
-(defgroup clingo-asp-mode nil
-  "Major mode for editing clingo files."
-  :group 'languages
-  :prefix "clingo-asp-")
 
 ;; general defcustoms
 (defcustom clingo-asp-mode-version "0.0.1"
   "Version of `clingo-asp-mode'."
   :type 'string
-  :group 'clingo-asp-mode)
+  :group 'clingo-asp)
 
 (defcustom clingo-asp-executable (executable-find "clingo")
   "Path to clingo binary used for execution."
   :type 'string
-  :group 'clingo-asp-mode)
+  :group 'clingo-asp)
 
 (defcustom clingo-asp-indentation 2
   "Level of indentation."
   :type 'integer
-  :group 'clingo-asp-mode)
-;; defcustoms end
-
-
-(defvar clingo-asp-font-lock-rules
-  '(:language clingo
-    :feature variable
-    ((variable) @font-lock-variable-use-face)
-
-    :language clingo
-    :feature punctuation
-    ((dot) @font-lock-punctuation-face)
-
-    :language clingo
-    :feature constant
-    ((identifier) @font-lock-constant-face)
-
-    :language clingo
-    :feature comment
-    ((comment) @font-lock-comment-face)
-
-    :language clingo
-    :feature number
-    ((number) @font-lock-number-face)
-
-    :language clingo
-    :feature negation
-    ([(classical_negation) (default_negation)] @font-lock-negation-char-face)
-
-    :language clingo
-    :feature operator
-    ([(comparison_predicate) (aggregatefunction)] @font-lock-builtin-face)
-
-    :language clingo
-    :feature string
-    ([(string)] @font-lock-string-face)
-
-    :language clingo
-    :feature function
-    ([(function)] @font-lock-function-call-face)))
+  :group 'clingo-asp)
+;; general defcustoms end
 
 
 ;; exit code start
@@ -92,17 +53,17 @@
     (if (>= code 20) (process-code 20))
     (if (>= code 10) (process-code 10))
     (if (>= code 1) (process-code 1))
-    (codes-to-string decomposed)))
+    (clingo-asp-codes-to-string decomposed)))
 
 
-(defun codes-to-string (codes)
+(defun clingo-asp-codes-to-string (codes)
   "Return a summary string of CODES."
   (let* ((code-sym (string-join (mapcar (lambda (x) (cadr (assoc x clingo-asp-exit-codes))) codes)" + "))
          (code-exp (string-join (mapcar (lambda (x) (caddr (assoc x clingo-asp-exit-codes))) codes) " ")))
     (format "%s (%s)" code-sym code-exp)))
 
 
-(defun clingo-process-exit (process-name)
+(defun clingo-asp-process-exit (process-name)
   "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits."
   (lambda (process event)
     (let ((process-buffer (get-buffer process-name))
@@ -116,12 +77,9 @@
 ;; exit code end
 
 
-(defgroup clingo-command nil
-  "Commands used by `clingo-asp-mode'."
-  :group 'clingo-asp-mode)
 
-
-(defvar clingo-command-list
+;; choosing arguments
+(defvar clingo-asp-arguments-list
   '((:name "vanilla"
      :interactive nil
      :commands ()
@@ -144,17 +102,17 @@
      :help "--models=(prompt: n)")))
 
 
-(defcustom clingo-asp-command-help-separator "  "
+(defcustom clingo-asp-arguments-help-separator "  "
   "String used to separate argument name from help.
 Used when interactively choosing arguments."
   :type 'string
-  :group 'clingo-asp-mode)
+  :group 'clingo-asp)
 
 
 (defun clingo-asp-annotate-command (command)
   "Get annotation for COMMAND.
 Used in `clingo-asp-arguments-query'."
-  (concat clingo-asp-command-help-separator (clingo-asp-get-args-or-help clingo-command-list command)))
+  (concat clingo-asp-arguments-help-separator (clingo-asp-get-args-or-help clingo-asp-arguments-list command)))
 
 
 (defun clingo-asp-get-args-or-help (command-list command)
@@ -169,7 +127,7 @@ If COMMAND-LIST contains plists with :name, :commands, and :help,
               (string-join (plist-get (car command-list) ':commands) " ")
             help-string))
       (clingo-asp-get-args-or-help (cdr command-list) command))))
-
+;; choosing arguments end
 
 
 
@@ -181,7 +139,7 @@ If COMMAND-LIST contains plists with :name, :commands, and :help,
   (let* ((default "Vanilla")
          (completion-ignore-case t)
          (completion-extra-properties '(:annotation-function clingo-asp-annotate-command))
-         (command-plist-list (mapcar (lambda (x) (cons (plist-get x ':name) x)) clingo-command-list))
+         (command-plist-list (mapcar (lambda (x) (cons (plist-get x ':name) x)) clingo-asp-arguments-list))
          (answer (completing-read
                   (concat "Command (default " default "): ")
                   command-plist-list nil t
@@ -193,13 +151,13 @@ If COMMAND-LIST contains plists with :name, :commands, and :help,
           (eval the-commands)
         the-commands))))
 
-(defun interactively-get-file-list (file)
+(defun clingo-asp-interactively-get-file-list (file)
   "A list of interactively chosen FILEs.
 Choosing anything other than an existing file ends choice.
 E.g. if `done' is not a file choose `done' to return the list."
   (interactive "F")
   (if (file-exists-p file)
-      (cons file (call-interactively #'interactively-get-file-list))
+      (cons file (call-interactively #'clingo-asp-interactively-get-file-list))
     (list )))
 ;; ;; helpers end
 
@@ -216,7 +174,7 @@ E.g. if `done' is not a file choose `done' to return the list."
            (list :name clingo-process
                  :buffer clingo-buffer
                  :command (cons clingo-asp-executable args-files)
-                 :sentinel (clingo-process-exit clingo-process)))
+                 :sentinel (clingo-asp-process-exit clingo-process)))
     (pop-to-buffer clingo-buffer)))
 
 
@@ -249,9 +207,8 @@ E.g. if `done' is not a file choose `done' to return the list."
 (defun clingo-asp-call-clingo-files-choice ()
   "Call `clingo-asp-call-clingo-choice' on interactively chosen files."
   (interactive)
-  (clingo-asp-call-clingo-choice (call-interactively #'interactively-get-file-list)))
+  (clingo-asp-call-clingo-choice (call-interactively #'clingo-asp-interactively-get-file-list)))
 ;; calling clingo end
-
 
 
 
@@ -266,14 +223,13 @@ E.g. if `done' is not a file choose `done' to return the list."
     ("[_']*[A-Z][A-Za-z0-9_']*" . 'font-lock-variable-use-face) ;; variable
     ("_*[a-z][A-Za-z0-9_']*" . 'font-lock-constant-face) ;; identifier/constant
     )
-"Font definitions for `clingo-asp-mode'."
-:type '(repeat ('string 'symbol))
-)
+"Font definitions for `clingo-asp'."
+:type '(repeat ('string 'symbol)))
 ;; font-lock end
 
 
 ;; syntax table
-(defvar clingo-asp-mode-syntax-table
+(defvar clingo-asp-syntax-table
   (let ((table (make-syntax-table)))
     (modify-syntax-entry ?. "." table)
     (modify-syntax-entry ?\" "\"" table)
@@ -286,22 +242,27 @@ E.g. if `done' is not a file choose `done' to return the list."
 ;; syntax table end
 
 
-;;; define clingo-asp-mode
-;;;###autoload
-(define-derived-mode clingo-asp-mode prog-mode "clingo-asp"
-  (kill-all-local-variables)
-  (setq major-mode 'clingo-asp-mode)
-  (setq mode-name "Clingo ASP")
-  (setq-local font-lock-defaults '(clingo-asp-font-lock-keywords))
-  (set-syntax-table clingo-asp-mode-syntax-table)
-  (setq comment-start "\%")
-  (setq comment-end "")
-  (setq-local tab-width clingo-asp-indentation))
+;; keymap
+(defvar clingo-asp-mode-map (make-sparse-keymap)  "Keymap for `clingo-asp-mode'.")
 
 (define-key clingo-asp-mode-map (kbd "C-c C-c") #'clingo-asp-call-clingo-on-current-file)
 (define-key clingo-asp-mode-map (kbd "C-c C-r") #'clingo-asp-call-clingo-on-current-region)
 (define-key clingo-asp-mode-map (kbd "C-c C-f") #'clingo-asp-call-clingo-file-choice)
 (define-key clingo-asp-mode-map (kbd "C-c C-F") #'clingo-asp-call-clingo-files-choice)
+;; keymap end
+
+;;; define clingo-asp-mode
+;;;###autoload
+(define-derived-mode clingo-asp-mode prog-mode "clingo-asp"
+  (kill-all-local-variables)
+  (setq-local major-mode 'clingo-asp-mode)
+  (setq-local mode-name "Clingo ASP")
+  (setq-local font-lock-defaults '(clingo-asp-font-lock-keywords))
+  (set-syntax-table clingo-asp-syntax-table)
+  (use-local-map clingo-asp-mode-map)
+  (setq-local comment-start "%")
+  (setq-local comment-end "")
+  (setq-local tab-width clingo-asp-indentation))
 
 (provide 'clingo-asp-mode)
 ;;; clingo-asp-mode.el ends here

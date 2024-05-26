@@ -79,7 +79,8 @@
 ;;;###autoload
 (define-derived-mode clingo-asp-ts-mode clingo-asp-mode "clingo-asp-ts"
   (setq-local font-lock-defaults nil)
-  (setq major-mode 'clingo-asp-ts-mode)
+  (setq-local major-mode 'clingo-asp-ts-mode)
+  (setq-local mode-name "Clingo ASP")
   (when (treesit-ready-p 'clingo)
     (treesit-parser-create 'clingo)
     (clingo-asp-ts-setup)))
