@@ -77,11 +77,9 @@
 
 ;;; define clingo-asp-ts-mode
 ;;;###autoload
-(define-derived-mode clingo-asp-ts-mode clingo-asp-mode "clingo"
+(define-derived-mode clingo-asp-ts-mode clingo-asp-mode "clingo-asp-ts"
   (setq-local font-lock-defaults nil)
-  (setq-local comment-start "%")
-  (setq-local comment-end "")
-  (setq-local tab-width clingo-asp-indentation)
+  (setq major-mode 'clingo-asp-ts-mode)
   (when (treesit-ready-p 'clingo)
     (treesit-parser-create 'clingo)
     (clingo-asp-ts-setup)))
