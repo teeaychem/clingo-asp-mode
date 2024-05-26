@@ -72,14 +72,13 @@
 (defun clingo-asp-clingo-process-exit (process-name)
   "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits."
   (lambda (process event)
-    (let ((process-buffer (get-buffer process-name))
-          (the-code (string-to-number (car (last (split-string event))))))
-      (if (equal (substring event 0 27) "exited abnormally with code")
-          (progn
-            (with-current-buffer process-buffer
-              (special-mode)
-              (goto-char (point-min)))
-            (princ (format "Process: %s exited with: %s" process (clingo-asp-decode-exit the-code))))))))
+    (let ((process-buffer (get-buffer process-name)))
+      (with-current-buffer process-buffer
+            (special-mode)
+            (goto-char (point-min)))
+      (if (and (> (length event) 27)
+               (equal (substring event 0 27) "exited abnormally with code"))
+          (princ (format "Process: %s exited with: %s" process (clingo-asp-decode-exit (string-to-number (car (last (split-string event)))))))))))
 
 
 (defun clingo-asp-gringo-process-exit (process-name)
@@ -116,7 +115,11 @@
     (:name "n models"
      :interactive t
      :commands  (string-split (format "--models=%s" (read-string "Number of models:")))
-     :help "--models=(prompt: n)")))
+     :help "--models=(prompt: n)")
+    (:name "help"
+     :interactive nil
+     :commands  ("--help")
+     :help "")))
 
 
 (defcustom clingo-asp-arguments-help-separator "  "
