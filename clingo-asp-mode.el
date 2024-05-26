@@ -273,7 +273,7 @@ E.g. if `done' is not a file choose `done' to return the list."
 
 
 ;; syntax table
-(defvar clingo-asp-table
+(defvar clingo-asp-mode-syntax-table
   (let ((table (make-syntax-table)))
     (modify-syntax-entry ?. "." table)
     (modify-syntax-entry ?\" "\"" table)
@@ -292,10 +292,11 @@ E.g. if `done' is not a file choose `done' to return the list."
   (kill-all-local-variables)
   (setq major-mode 'clingo-asp-mode)
   (setq mode-name "Clingo ASP")
-  (setq font-lock-defaults '(clingo-asp-font-lock-keywords))
-  (set-syntax-table clingo-asp-table)
+  (setq-local font-lock-defaults '(clingo-asp-font-lock-keywords))
+  (set-syntax-table clingo-asp-mode-syntax-table)
+  (setq comment-start "\%")
+  (setq comment-end "")
   (setq-local tab-width clingo-asp-indentation))
-
 
 (define-key clingo-asp-mode-map (kbd "C-c C-c") #'clingo-asp-call-clingo-on-current-file)
 (define-key clingo-asp-mode-map (kbd "C-c C-r") #'clingo-asp-call-clingo-on-current-region)
