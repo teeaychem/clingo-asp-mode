@@ -194,33 +194,41 @@
     (:name "n models"
      :interactive t
      :commands  (string-split (format "--models=%s" (read-string "Number of models:")))
-     :help "--models=(prompt: n)"))
-;;   "Descriptions and paired functions which generate arguments to pass to clingo.
-;; Functions return a list of strings where each sting is a unique argument.
-;; The third element is a description to be used by `annotate-command'"
-;;   :group 'clingo-command
-  )
+     :help "--models=(prompt: n)")))
+
+
+(defcustom clingo-command-help-separator "  "
+  "String used to separate argument name from help.
+Used when interactively choosing arguments."
+  :type 'string
+  :group 'clingo-ts-mode)
 
 
 (defun annotate-command (command)
-  "Determine formatting based on COMMAND.
-If COMMAND uses identity for a static list and description is given,
-concatendate the list.
-Otherwise, use the description given in the command-list."
-  (let* ((associated-list (assoc command clingo-command-list))
-        (eval-as-string (format "%s" (caadr associated-list)))
-        (the-string
-         (cond ((and (string-equal eval-as-string "identity") (string-equal (caddr associated-list) ""))
-                (format "%s" (string-join (cdadr associated-list) " ")))
-               (t (caddr associated-list)))))
-    (format "  %s" the-string)))
+  "Get annotation for COMMAND.
+Used in `clingo-command-query'."
+  (concat "  " (get-commands-or-help clingo-command-list command)))
+
+
+(defun get-commands-or-help (command-list command)
+  "Helper for `annotate-command'.
+If COMMAND-LIST contains plists with :name, :commands, and :help,
+ reutrn :help if non-empty and otherwise :commands when :name is COMMAND."
+  (if (eq command-list '())
+      ""
+    (if (string-equal command (plist-get (car command-list) ':name))
+        (let ((help-string (plist-get (car command-list) ':help)))
+          (if (string-equal help-string "")
+              (string-join (plist-get (car command-list) ':commands) " ")
+            help-string))
+      (get-commands-or-help (cdr command-list) command))))
 
 
 (defun clingo-command-query ()
   "Query user for arguments to pass to clingo."
   (let* ((default "Vanilla")
          (completion-ignore-case t)
-         ;; (completion-extra-properties '(:annotation-function annotate-command))
+         (completion-extra-properties '(:annotation-function annotate-command))
          (command-plist-list (mapcar (lambda (x) (cons (plist-get x ':name) x)) clingo-command-list))
          (answer (completing-read
                   (concat "Command (default " default "): ")
@@ -235,16 +243,20 @@ Otherwise, use the description given in the command-list."
 
 
 (defun run-clingo-choice (files)
-  "Interactively select arguments.
-Then, call `run-clingo' on FILES with those arguments."
-  (let ((option (clingo-command-query)))
-    (run-clingo files option)))
+  "Call `run-clingo' on FILES with chosen arguments."
+  (run-clingo files (clingo-command-query)))
 
 
 (defun run-clingo-file-choice (file)
   "Call `run-clingo-choice' on interactively chosen FILE."
   (interactive "f")
   (run-clingo-choice (list file)))
+
+
+(defun run-clingo-files-choice ()
+  "Call `run-clingo-choice' on interactively chosen files."
+  (interactive)
+  (run-clingo-choice (call-interactively #'interactively-get-file-list)))
 
 
 (defun interactively-get-file-list (file)
@@ -256,10 +268,6 @@ E.g. if `done' is not a file choose `done' to return the list."
       (cons file (call-interactively #'interactively-get-file-list))
     (list )))
 
-(defun run-clingo-files-choice ()
-  (interactive)
-  (let ((files (call-interactively #'interactively-get-file-list)))
-    (message (format "%s" files))))
 
 
 ;;; define clingo-ts-mode
@@ -277,8 +285,7 @@ E.g. if `done' is not a file choose `done' to return the list."
 (define-key clingo-ts-mode-map (kbd "C-c C-c") #'run-clingo-on-current-file)
 (define-key clingo-ts-mode-map (kbd "C-c C-r") #'run-clingo-on-current-region)
 (define-key clingo-ts-mode-map (kbd "C-c C-f") #'run-clingo-file-choice)
-(define-key clingo-ts-mode-map (kbd "C-c C-d") #'run-clingo-files-choice)
-(define-key clingo-ts-mode-map (kbd "C-c C-b") #'clingo-build-command)
+(define-key clingo-ts-mode-map (kbd "C-c C-F") #'run-clingo-files-choice)
 
 
 
