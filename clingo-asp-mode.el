@@ -249,37 +249,43 @@ E.g. if `done' is not a file choose `done' to return the list."
 
 
 ;; font-lock
-(defvar clingo-asp-font-lock-keywords
-  `((,(regexp-opt '("not" "-") 'nil) . font-lock-negation-char-face)
-    ("_*[a-z][A-Za-z0-9_\\']*" . font-lock-constant-face) ;; identifier/constant
-    ("[_\']*[A-Z][\'A-Za-z0-9_]*" . font-lock-variable-name-face) ;; variable
-    ("0|(?:[1-9][0-9]*" . font-lock-number-face) ;; deciamal
-    ("0x[0-9A-Fa-f]+" . font-lock-number-face) ;; hexadeciamal
-    ("0o[1-7]+" . font-lock-number-face) ;; octal
-    ("0b[0-1]+" . font-lock-number-face) ;; binary
-    ("\\." . font-lock-punctuation-face)))
+(defcustom clingo-asp-font-lock-keywords
+  '((":-" . 'font-lock-punctuation-face)
+    ("\\(?:not\\|-[A-Za-z0-9_']\\)" . 'font-lock-negation-char-face)
+    ("0x[0-9A-Fa-f]+" . 'font-lock-number-face) ;; hexadeciamal
+    ("0o[1-7]+" . 'font-lock-number-face) ;; octal
+    ("0b[0-1]+" . 'font-lock-number-face) ;; binary
+    ("0\\|\\(?:[1-9][0-9]*\\)" . 'font-lock-number-face) ;; deciamal
+    ("[_']*[A-Z][A-Za-z0-9_']*" . 'font-lock-variable-use-face) ;; variable
+    ("_*[a-z][A-Za-z0-9_']*" . 'font-lock-constant-face) ;; identifier/constant
+    )
+"Font definitions for `clingo-asp-mode'."
+:type '(repeat ('string 'symbol))
+)
 ;; font-lock end
 
-;; syntax table
- (defvar clingo-asp-table
-      (let ((table (make-syntax-table)))
-        (modify-syntax-entry ?. "." table)
-        (modify-syntax-entry ?\" "\"" table)
-        (modify-syntax-entry ?% "<" table)
-        (modify-syntax-entry ?' "w" table)
-        (modify-syntax-entry ?_ "w" table)
-        table))
-;; syntax table end
 
+;; syntax table
+(defvar clingo-asp-table
+  (let ((table (make-syntax-table)))
+    (modify-syntax-entry ?. "." table)
+    (modify-syntax-entry ?\" "\"" table)
+    (modify-syntax-entry ?% "<" table)
+    (modify-syntax-entry ?\n ">" table)
+    (modify-syntax-entry ?' "w" table)
+    (modify-syntax-entry ?_ "w" table)
+    (modify-syntax-entry ?# "'" table)
+    table))
+;; syntax table end
 
 
 ;;; define clingo-asp-mode
 ;;;###autoload
 (define-derived-mode clingo-asp-mode prog-mode "clingo"
-  (setq-local font-lock-defaults '(clingo-asp-font-lock-keywords))
-  (setq-local syntax-table clingo-asp-table)
-  (setq-local comment-start "%")
-  (setq-local comment-end "")
+  (setq font-lock-defaults '(clingo-asp-font-lock-keywords))
+  (set-syntax-table clingo-asp-table)
+  ;; (setq-local comment-start "%")
+  ;; (setq-local comment-end "")
   (setq-local tab-width clingo-asp-indentation))
 
 
@@ -287,8 +293,6 @@ E.g. if `done' is not a file choose `done' to return the list."
 (define-key clingo-asp-mode-map (kbd "C-c C-r") #'run-clingo-on-current-region)
 (define-key clingo-asp-mode-map (kbd "C-c C-f") #'run-clingo-file-choice)
 (define-key clingo-asp-mode-map (kbd "C-c C-F") #'run-clingo-files-choice)
-
-
 
 (provide 'clingo-asp-mode)
 ;;; clingo-asp-mode.el ends here
