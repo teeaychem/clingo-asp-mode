@@ -16,8 +16,14 @@
   :type 'string
   :group 'clingo-asp)
 
-(defcustom clingo-asp-executable (executable-find "clingo")
+(defcustom clingo-asp-clingo-executable (executable-find "clingo")
   "Path to clingo binary used for execution."
+  :type 'string
+  :group 'clingo-asp)
+
+
+(defcustom clingo-asp-gringo-executable (executable-find "gringo")
+  "Path to gringo binary used for execution."
   :type 'string
   :group 'clingo-asp)
 
@@ -63,7 +69,7 @@
     (format "%s (%s)" code-sym code-exp)))
 
 
-(defun clingo-asp-process-exit (process-name)
+(defun clingo-asp-clingo-process-exit (process-name)
   "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits."
   (lambda (process event)
     (let ((process-buffer (get-buffer process-name))
@@ -74,6 +80,17 @@
               (special-mode)
               (goto-char (point-min)))
             (princ (format "Process: %s exited with: %s" process (clingo-asp-decode-exit the-code))))))))
+
+
+(defun clingo-asp-gringo-process-exit (process-name)
+  "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits."
+  (lambda (process event)
+    (let ((process-buffer (get-buffer process-name)))
+      (if (not (string-equal "finished" event))
+          (message (format "Process: %s: %s" process event)))
+      (with-current-buffer process-buffer
+        (special-mode)
+        (goto-char (point-min))))))
 ;; exit code end
 
 
@@ -131,7 +148,7 @@ If COMMAND-LIST contains plists with :name, :commands, and :help,
 
 
 
-;; calling clingo
+;; calling programs
 
 ;; ;; helpers
 (defun clingo-asp-arguments-query ()
@@ -167,18 +184,15 @@ E.g. if `done' is not a file choose `done' to return the list."
   (let* ((args-files (append args (mapcar #'file-truename files)))
          (clingo-process (generate-new-buffer-name "*clingo*"))
          (clingo-buffer (get-buffer-create clingo-process)))
-    (with-current-buffer clingo-buffer
-      (insert (format "%s" args-files))
-        )
     (apply #'make-process
            (list :name clingo-process
                  :buffer clingo-buffer
-                 :command (cons clingo-asp-executable args-files)
-                 :sentinel (clingo-asp-process-exit clingo-process)))
+                 :command (cons clingo-asp-clingo-executable args-files)
+                 :sentinel (clingo-asp-clingo-process-exit clingo-process)))
     (pop-to-buffer clingo-buffer)))
 
 
-(defun clingo-asp-call-clingo-on-current-file ()
+(defun clingo-asp-call-clingo-on-current-buffer ()
   "Call `clingo-asp-call-clingo-choice' on the file opened in the current buffer."
   (interactive)
   (let ((this-file (buffer-file-name)))
@@ -208,6 +222,52 @@ E.g. if `done' is not a file choose `done' to return the list."
   "Call `clingo-asp-call-clingo-choice' on interactively chosen files."
   (interactive)
   (clingo-asp-call-clingo-choice (call-interactively #'clingo-asp-interactively-get-file-list)))
+
+
+(defun clingo-asp-call-gringo (files args)
+  "Run gringo on FILES with ARGS as a new process with it's own buffer."
+  (let* ((args-files (append args (mapcar #'file-truename files)))
+         (gringo-process (generate-new-buffer-name "*gringo*"))
+         (gringo-buffer (get-buffer-create gringo-process)))
+    (apply #'make-process
+           (list :name gringo-process
+                 :buffer gringo-buffer
+                 :command (cons clingo-asp-gringo-executable args-files)
+                 :sentinel (clingo-asp-gringo-process-exit gringo-process)))
+    (pop-to-buffer gringo-buffer)))
+
+
+(defun clingo-asp-call-gringo-on-current-buffer ()
+  "Call `clingo-asp-call-gringo-choice' on the file opened in the current buffer."
+  (interactive)
+  (let ((this-file (buffer-file-name)))
+    (clingo-asp-call-gringo-choice (list this-file))))
+
+
+(defun clingo-asp-call-gringo-on-current-region (start end)
+  "Run clingo on the region from START to END."
+  (interactive "r")
+  (let ((temp-file (make-temp-file "clingo-region" nil ".lp" nil)))
+    (write-region start end temp-file t)
+    (clingo-asp-call-gringo-choice (list temp-file))))
+
+
+(defun clingo-asp-call-gringo-choice (files)
+  "Call `clingo-asp-call-gringo' on FILES with chosen arguments."
+  (clingo-asp-call-gringo files (clingo-asp-arguments-query)))
+
+
+(defun clingo-asp-call-gringo-file-choice (file)
+  "Call `clingo-asp-call-gringo-choice' on interactively chosen FILE."
+  (interactive "f")
+  (clingo-asp-call-gringo-choice (list file)))
+
+
+(defun clingo-asp-call-gringo-files-choice ()
+  "Call `clingo-asp-call-gringo-choice' on interactively chosen files."
+  (interactive)
+  (clingo-asp-call-gringo-choice (call-interactively #'clingo-asp-interactively-get-file-list)))
+
 ;; calling clingo end
 
 
@@ -245,10 +305,16 @@ E.g. if `done' is not a file choose `done' to return the list."
 ;; keymap
 (defvar clingo-asp-mode-map (make-sparse-keymap)  "Keymap for `clingo-asp-mode'.")
 
-(define-key clingo-asp-mode-map (kbd "C-c C-c") #'clingo-asp-call-clingo-on-current-file)
-(define-key clingo-asp-mode-map (kbd "C-c C-r") #'clingo-asp-call-clingo-on-current-region)
-(define-key clingo-asp-mode-map (kbd "C-c C-f") #'clingo-asp-call-clingo-file-choice)
-(define-key clingo-asp-mode-map (kbd "C-c C-F") #'clingo-asp-call-clingo-files-choice)
+(define-key clingo-asp-mode-map (kbd "C-c C-c b") #'clingo-asp-call-clingo-on-current-buffer)
+(define-key clingo-asp-mode-map (kbd "C-c C-c r") #'clingo-asp-call-clingo-on-current-region)
+(define-key clingo-asp-mode-map (kbd "C-c C-c f") #'clingo-asp-call-clingo-file-choice)
+(define-key clingo-asp-mode-map (kbd "C-c C-c F") #'clingo-asp-call-clingo-files-choice)
+
+(define-key clingo-asp-mode-map (kbd "C-c C-g b") #'clingo-asp-call-gringo-on-current-buffer)
+(define-key clingo-asp-mode-map (kbd "C-c C-g r") #'clingo-asp-call-gringo-on-current-region)
+(define-key clingo-asp-mode-map (kbd "C-c C-g f") #'clingo-asp-call-gringo-file-choice)
+(define-key clingo-asp-mode-map (kbd "C-c C-g F") #'clingo-asp-call-gringo-files-choice)
+
 ;; keymap end
 
 ;;; define clingo-asp-mode
