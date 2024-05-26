@@ -89,6 +89,7 @@
   (treesit-major-mode-setup))
 
 
+;; exit code start
 (defconst exit-codes
   '((128 "E_NO_RUN" "Search not started because of syntax or command line error.")
     (65 "E_ERROR" "Run was interrupted by internal error.")
@@ -114,7 +115,7 @@
     (if (>= code 10) (process-code 10))
     (if (>= code 1) (process-code 1))
     (codes-to-string decomposed)))
-
+;; exit code end
 
 (defun codes-to-string (codes)
   "Return a summary string of CODES."
@@ -136,16 +137,19 @@
             (princ (format "Process: %s exited with: %s" process (decode-exit the-code))))))))
 
 
-(defun run-clingo (file args)
-  "Run clingo on FILE with ARGS as a new process with it's own buffer."
+(defun run-clingo (files args)
+  "Run clingo on FILES with ARGS as a new process with it's own buffer."
   (let* ((clingo-program (executable-find "clingo"))
-         (args-file (nconc args (list (file-truename file))))
+         (args-files (append args (mapcar #'file-truename files)))
          (clingo-process (generate-new-buffer-name "*clingo*"))
          (clingo-buffer (get-buffer-create clingo-process)))
+    (with-current-buffer clingo-buffer
+      (insert (format "%s" args-files))
+        )
     (apply #'make-process
            (list :name clingo-process
                  :buffer clingo-buffer
-                 :command (cons clingo-program args-file)
+                 :command (cons clingo-program args-files)
                  :sentinel (clingo-process-exit clingo-process)))
     (pop-to-buffer clingo-buffer)))
 
@@ -154,7 +158,7 @@
   "Call `run-clingo-choice' on the file opened in the current buffer."
   (interactive)
   (let ((this-file (buffer-file-name)))
-    (run-clingo-choice this-file)))
+    (run-clingo-choice (list this-file))))
 
 
 (defun run-clingo-on-current-region (start end)
@@ -162,7 +166,7 @@
   (interactive "r")
   (let ((temp-file (make-temp-file "clingo-region" nil ".lp" nil)))
     (write-region start end temp-file t)
-    (run-clingo-choice temp-file)))
+    (run-clingo-choice (list temp-file))))
 
 
 (defgroup clingo-command nil
@@ -170,17 +174,32 @@
   :group 'clingo-ts-mode)
 
 
-(defcustom clingo-command-list
-  '(("Vanilla" (identity "") "no arguments")
-    ("All models" (identity "--models=0") "")
-    ("All subset minimal models" (identity "--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16") "")
-    ("Custom"  (string-split (read-string "Enter commands:")) "enter commands in a prompt")
-    ("n models" (string-split (format "--models=%s" (read-string "Enter the number of models:"))) "--models=n"))
-  "Descriptions and paired functions which generate arguments to pass to clingo.
-Functions return a list of strings where each sting is a unique argument.
-The third element is a description to be used by `annotate-command'"
-  :group 'clingo-command
-  :type '(repeat (group (string :tag "Name") (string :tag "Command"))))
+(defvar clingo-command-list
+  '((:name "vanilla"
+     :interactive nil
+     :commands ()
+     :help "no arguments")
+    (:name "all models"
+     :interactive nil
+     :commands ("--models=0")
+     :help "")
+    (:name "all subset minimal models"
+     :interactive nil
+     :commands ("--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16")
+     :help "")
+    (:name "custom"
+     :interactive t
+     :commands (string-split (read-string "Commands:"))
+     :help "enter commands in a prompt")
+    (:name "n models"
+     :interactive t
+     :commands  (string-split (format "--models=%s" (read-string "Number of models:")))
+     :help "--models=(prompt: n)"))
+;;   "Descriptions and paired functions which generate arguments to pass to clingo.
+;; Functions return a list of strings where each sting is a unique argument.
+;; The third element is a description to be used by `annotate-command'"
+;;   :group 'clingo-command
+  )
 
 
 (defun annotate-command (command)
@@ -194,35 +213,53 @@ Otherwise, use the description given in the command-list."
          (cond ((and (string-equal eval-as-string "identity") (string-equal (caddr associated-list) ""))
                 (format "%s" (string-join (cdadr associated-list) " ")))
                (t (caddr associated-list)))))
-    (format "\t\t(%s)" the-string)))
+    (format "  %s" the-string)))
 
 
 (defun clingo-command-query ()
   "Query user for arguments to pass to clingo."
-  (let* ((default "clingo")
+  (let* ((default "Vanilla")
          (completion-ignore-case t)
-         (completion-extra-properties
-          '(:annotation-function annotate-command))
+         ;; (completion-extra-properties '(:annotation-function annotate-command))
+         (command-plist-list (mapcar (lambda (x) (cons (plist-get x ':name) x)) clingo-command-list))
          (answer (completing-read
                   (concat "Command (default " default "): ")
-                  clingo-command-list nil t
+                  command-plist-list nil t
                   nil nil default)))
-    (cond ((and answer (not (string-equal answer "")))
-           (eval (car-safe (cdr-safe (assoc-string answer clingo-command-list)))))
-          (t (car-safe (cdr-safe (assoc-string default clingo-command-list)))))))
+    (let* ((the-plist (cdr (assoc answer command-plist-list)))
+           (the-commands (plist-get the-plist ':commands))
+           (eval-required (plist-get the-plist ':interactive)))
+      (if eval-required
+          (eval the-commands)
+        the-commands))))
 
 
-(defun run-clingo-choice (file)
+(defun run-clingo-choice (files)
   "Interactively select arguments.
-Then, call `run-clingo' on FILE with those arguments."
+Then, call `run-clingo' on FILES with those arguments."
   (let ((option (clingo-command-query)))
-    (run-clingo file option)))
+    (run-clingo files option)))
 
 
 (defun run-clingo-file-choice (file)
   "Call `run-clingo-choice' on interactively chosen FILE."
   (interactive "f")
-  (run-clingo-choice file))
+  (run-clingo-choice (list file)))
+
+
+(defun interactively-get-file-list (file)
+  "A list of interactively chosen FILEs.
+Choosing anything other than an existing file ends choice.
+E.g. if `done' is not a file choose `done' to return the list."
+  (interactive "F")
+  (if (file-exists-p file)
+      (cons file (call-interactively #'interactively-get-file-list))
+    (list )))
+
+(defun run-clingo-files-choice ()
+  (interactive)
+  (let ((files (call-interactively #'interactively-get-file-list)))
+    (message (format "%s" files))))
 
 
 ;;; define clingo-ts-mode
@@ -240,6 +277,13 @@ Then, call `run-clingo' on FILE with those arguments."
 (define-key clingo-ts-mode-map (kbd "C-c C-c") #'run-clingo-on-current-file)
 (define-key clingo-ts-mode-map (kbd "C-c C-r") #'run-clingo-on-current-region)
 (define-key clingo-ts-mode-map (kbd "C-c C-f") #'run-clingo-file-choice)
+(define-key clingo-ts-mode-map (kbd "C-c C-d") #'run-clingo-files-choice)
+(define-key clingo-ts-mode-map (kbd "C-c C-b") #'clingo-build-command)
+
+
+
+
+
 
 
 (provide 'clingo-ts-mode)
