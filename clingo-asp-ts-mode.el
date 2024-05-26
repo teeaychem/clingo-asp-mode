@@ -6,30 +6,30 @@
 
 ;;; Code:
 
-(defgroup clingo-ts-mode nil
+(defgroup clingo-asp-ts-mode nil
   "Major mode for editing clingo files."
   :group 'languages
-  :prefix "clingo-ts-")
+  :prefix "clingo-asp-ts-")
 
 
-(defcustom clingo-ts-mode-version "0.0.1"
-  "Version of `clingo-ts-mode'."
+(defcustom clingo-asp-ts-mode-version "0.0.1"
+  "Version of `clingo-asp-ts-mode'."
   :type 'string
-  :group 'clingo-ts-mode)
+  :group 'clingo-asp-ts-mode)
 
 
-(defcustom clingo-ts-path (executable-find "clingo")
+(defcustom clingo-asp-ts-path (executable-find "clingo")
   "Path to clingo binary used for execution."
   :type 'string
-  :group 'clingo-ts-mode)
+  :group 'clingo-asp-ts-mode)
 
-(defcustom clingo-ts-indentation 2
+(defcustom clingo-asp-ts-indentation 2
   "Level of indentation."
   :type 'integer
-  :group 'clingo-ts-mode)
+  :group 'clingo-asp-ts-mode)
 
 
-(defvar clingo-ts-font-lock-rules
+(defvar clingo-asp-ts-font-lock-rules
   '(:language clingo
     :feature variable
     ((variable) @font-lock-variable-use-face)
@@ -69,12 +69,12 @@
 
 (setq-local treesit-font-lock-settings
             (apply #'treesit-font-lock-rules
-                 clingo-ts-font-lock-rules)))
+                 clingo-asp-ts-font-lock-rules)))
 
 
-(defun clingo-ts-setup ()
-  "Setup for `clingo-ts-mode'."
-  (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules clingo-ts-font-lock-rules))
+(defun clingo-asp-ts-setup ()
+  "Setup for `clingo-asp-ts-mode'."
+  (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules clingo-asp-ts-font-lock-rules))
   (setq-local font-lock-defaults nil)
   (setq-local treesit-font-lock-feature-list
               '((punctuation
@@ -170,8 +170,8 @@
 
 
 (defgroup clingo-command nil
-  "Commands used by `clingo-ts-mode'."
-  :group 'clingo-ts-mode)
+  "Commands used by `clingo-asp-ts-mode'."
+  :group 'clingo-asp-ts-mode)
 
 
 (defvar clingo-command-list
@@ -201,7 +201,7 @@
   "String used to separate argument name from help.
 Used when interactively choosing arguments."
   :type 'string
-  :group 'clingo-ts-mode)
+  :group 'clingo-asp-ts-mode)
 
 
 (defun annotate-command (command)
@@ -270,29 +270,29 @@ E.g. if `done' is not a file choose `done' to return the list."
 
 
 
-;;; define clingo-ts-mode
+;;; define clingo-asp-ts-mode
 ;;;###autoload
-(define-derived-mode clingo-ts-mode prog-mode "clingo"
+(define-derived-mode clingo-asp-ts-mode prog-mode "clingo"
   (setq-local font-lock-defaults nil)
   (setq-local comment-start "%")
   (setq-local comment-end "")
-  (setq-local tab-width clingo-ts-indentation)
+  (setq-local tab-width clingo-asp-ts-indentation)
   (when (treesit-ready-p 'clingo)
     (treesit-parser-create 'clingo)
-    (clingo-ts-setup)))
+    (clingo-asp-ts-setup)))
 
 
-(define-key clingo-ts-mode-map (kbd "C-c C-c") #'run-clingo-on-current-file)
-(define-key clingo-ts-mode-map (kbd "C-c C-r") #'run-clingo-on-current-region)
-(define-key clingo-ts-mode-map (kbd "C-c C-f") #'run-clingo-file-choice)
-(define-key clingo-ts-mode-map (kbd "C-c C-F") #'run-clingo-files-choice)
-
-
-
+(define-key clingo-asp-ts-mode-map (kbd "C-c C-c") #'run-clingo-on-current-file)
+(define-key clingo-asp-ts-mode-map (kbd "C-c C-r") #'run-clingo-on-current-region)
+(define-key clingo-asp-ts-mode-map (kbd "C-c C-f") #'run-clingo-file-choice)
+(define-key clingo-asp-ts-mode-map (kbd "C-c C-F") #'run-clingo-files-choice)
 
 
 
 
-(provide 'clingo-ts-mode)
 
-;;; clingo-ts-mode.el ends here
+
+
+(provide 'clingo-asp-ts-mode)
+
+;;; clingo-asp-ts-mode.el ends here
