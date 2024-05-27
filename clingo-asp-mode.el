@@ -31,7 +31,27 @@
   "Level of indentation."
   :type 'integer
   :group 'clingo-asp)
+
+(defcustom clingo-asp-default-arguments-choice "no arguments"
+  "Default choice of arguments."
+  :type 'string
+  :group 'clingo-asp)
 ;; general defcustoms end
+
+;; arguments defaults
+(defcustom clingo-asp-default-clingo-outf 2
+  "Default value of outf when calling clingo."
+  :type 'integer
+  :group 'clingo-asp)
+
+
+(defvar clingo-asp-default-plists
+  '((:default clingo-asp-default-clingo-outf
+     :match ("--outf")
+     :format "--outf=%s")))
+
+
+;; argument defaults end
 
 
 ;; exit code start
@@ -96,7 +116,7 @@
 
 ;; choosing arguments
 (defvar clingo-asp-arguments-list
-  '((:name "vanilla"
+  '((:name "no arguments"
      :interactive nil
      :commands ()
      :help "no arguments")
@@ -147,6 +167,36 @@ If COMMAND-LIST contains plists with :name, :commands, and :help,
               (string-join (plist-get (car command-list) ':commands) " ")
             help-string))
       (clingo-asp-get-args-or-help (cdr command-list) command))))
+
+
+
+
+
+
+
+
+(defun clingo-asp-get-default-plist (default plists)
+  "From PLISTS get plist whose :default matches DEFAULT."
+  (cond ((not plists) '())
+        ((eq default (plist-get (car plists) ':default)) (car plists))
+        (t (clingo-asp-get-default-plist default (car plists)))))
+
+
+(defun clingo-asp-default-to-add (default-arg-plist arg-string)
+  "Formatted argument using DEFAULT-ARG-PLIST if arg is not in ARG-STRING.
+Otherwise, the empty string."
+  (if (string-match-p (regexp-opt (plist-get default-arg-plist ':match) "\\(?:[[:blank:]]") arg-string)
+      ""
+    (format (plist-get default-arg-plist ':format) (eval (plist-get default-arg-plist ':default)))))
+
+(defun clingo-asp-add-defaults (arg-list)
+  "Append viable defaults to ARG-LIST."
+  (let ((nice-arg-string (concat " " (string-join arg-list " ")))) ;; leading " " to avoid complex regex
+    (append arg-list (remq nil (mapcar (lambda (x) (clingo-asp-default-to-add x nice-arg-string)) clingo-asp-default-plists)))))
+
+
+
+
 ;; choosing arguments end
 
 
@@ -154,9 +204,11 @@ If COMMAND-LIST contains plists with :name, :commands, and :help,
 ;; calling programs
 
 ;; ;; helpers
+
+;; todo: update list to have :programs list, pass clingo/gringo etc. as an argument and filter commands based on this.
 (defun clingo-asp-arguments-query ()
   "Query user for arguments to pass to clingo."
-  (let* ((default "Vanilla")
+  (let* ((default clingo-asp-default-arguments-choice)
          (completion-ignore-case t)
          (completion-extra-properties '(:annotation-function clingo-asp-annotate-command))
          (command-plist-list (mapcar (lambda (x) (cons (plist-get x ':name) x)) clingo-asp-arguments-list))
@@ -184,7 +236,7 @@ E.g. if `done' is not a file choose `done' to return the list."
 
 (defun clingo-asp-call-clingo (files args)
   "Run clingo on FILES with ARGS as a new process with it's own buffer."
-  (let* ((args-files (append args (mapcar #'file-truename files)))
+  (let* ((args-files (append (clingo-asp-add-defaults args) (mapcar #'file-truename files)))
          (clingo-process (generate-new-buffer-name "*clingo*"))
          (clingo-buffer (get-buffer-create clingo-process)))
     (apply #'make-process
