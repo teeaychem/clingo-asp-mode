@@ -39,7 +39,17 @@
 ;; general defcustoms end
 
 ;; arguments defaults
-(defcustom clingo-asp-default-clingo-outf 2
+(defcustom clingo-asp-default-clingo-outf 0
+  "Default value of outf when calling clingo."
+  :type 'integer
+  :group 'clingo-asp)
+
+(defcustom clingo-asp-default-clingo-models 5
+  "Default value of outf when calling clingo."
+  :type 'integer
+  :group 'clingo-asp)
+
+(defcustom clingo-asp-default-clingo-help 2
   "Default value of outf when calling clingo."
   :type 'integer
   :group 'clingo-asp)
@@ -48,7 +58,10 @@
 (defvar clingo-asp-default-plists
   '((:default clingo-asp-default-clingo-outf
      :match ("--outf")
-     :format "--outf=%s")))
+     :format "--outf=%s")
+    (:default clingo-asp-default-clingo-models
+     :match ("--models" "-n")
+     :format "--models=%s")))
 
 
 ;; argument defaults end
@@ -117,29 +130,29 @@
 ;; choosing arguments
 (defvar clingo-asp-arguments-list
   '((:name "no arguments"
-     :interactive nil
+     :evaluate nil
      :commands ()
      :help "no arguments")
     (:name "all models"
-     :interactive nil
+     :evaluate nil
      :commands ("--models=0")
      :help "")
     (:name "all subset minimal models"
-     :interactive nil
+     :evaluate nil
      :commands ("--models=0" "--enum-mode=domRec" "--heuristic=Domain" "--dom-mod=5,16")
      :help "")
     (:name "custom"
-     :interactive t
+     :evaluate t
      :commands (string-split (read-string "Commands:"))
      :help "enter commands in a prompt")
     (:name "n models"
-     :interactive t
-     :commands  (string-split (format "--models=%s" (read-string "Number of models:")))
+     :evaluate t
+     :commands (string-split (format "--models=%s" (read-string "Number of models:")))
      :help "--models=(prompt: n)")
     (:name "help"
-     :interactive nil
-     :commands  ("--help")
-     :help "")))
+     :evaluate t
+     :commands (string-split (format "--help=%s" (eval clingo-asp-default-clingo-help)))
+     :help "--help")))
 
 
 (defcustom clingo-asp-arguments-help-separator "  "
@@ -169,12 +182,6 @@ If COMMAND-LIST contains plists with :name, :commands, and :help,
       (clingo-asp-get-args-or-help (cdr command-list) command))))
 
 
-
-
-
-
-
-
 (defun clingo-asp-get-default-plist (default plists)
   "From PLISTS get plist whose :default matches DEFAULT."
   (cond ((not plists) '())
@@ -186,13 +193,13 @@ If COMMAND-LIST contains plists with :name, :commands, and :help,
   "Formatted argument using DEFAULT-ARG-PLIST if arg is not in ARG-STRING.
 Otherwise, the empty string."
   (if (string-match-p (regexp-opt (plist-get default-arg-plist ':match) "\\(?:[[:blank:]]") arg-string)
-      ""
-    (format (plist-get default-arg-plist ':format) (eval (plist-get default-arg-plist ':default)))))
+      nil
+    (string-trim (format (plist-get default-arg-plist ':format) (eval (plist-get default-arg-plist ':default))))))
 
 (defun clingo-asp-add-defaults (arg-list)
   "Append viable defaults to ARG-LIST."
-  (let ((nice-arg-string (concat " " (string-join arg-list " ")))) ;; leading " " to avoid complex regex
-    (append arg-list (remq nil (mapcar (lambda (x) (clingo-asp-default-to-add x nice-arg-string)) clingo-asp-default-plists)))))
+  (let* ((nice-arg-string (concat " " (string-join arg-list " ")))) ;; leading " " to avoid complex regex
+    (remq nil (append arg-list (mapcar (lambda (x) (clingo-asp-default-to-add x nice-arg-string)) clingo-asp-default-plists)))))
 
 
 
@@ -218,7 +225,7 @@ Otherwise, the empty string."
                   nil nil default)))
     (let* ((the-plist (cdr (assoc answer command-plist-list)))
            (the-commands (plist-get the-plist ':commands))
-           (eval-required (plist-get the-plist ':interactive)))
+           (eval-required (plist-get the-plist ':evaluate)))
       (if eval-required
           (eval the-commands)
         the-commands))))
