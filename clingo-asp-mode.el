@@ -9,7 +9,6 @@
   "Commands used by `clingo-asp-mode'."
   :group 'clingo-asp)
 
-
 ;; general defcustoms
 (defcustom clingo-asp-mode-version "0.0.1"
   "Version of `clingo-asp-mode'."
@@ -62,9 +61,14 @@
     (:default clingo-asp-default-clingo-models
      :match ("--models" "-n")
      :format "--models=%s")))
-
-
 ;; argument defaults end
+
+;;
+(defcustom clingo-asp-mode-hook nil
+  "Hooks called when clingo-asp-mode is enabled."
+  :type 'hook
+  :group 'clingo-asp)
+;;
 
 
 ;; exit code start
@@ -200,10 +204,6 @@ Otherwise, the empty string."
   "Append viable defaults to ARG-LIST."
   (let* ((nice-arg-string (concat " " (string-join arg-list " ")))) ;; leading " " to avoid complex regex
     (remq nil (append arg-list (mapcar (lambda (x) (clingo-asp-default-to-add x nice-arg-string)) clingo-asp-default-plists)))))
-
-
-
-
 ;; choosing arguments end
 
 
@@ -390,7 +390,8 @@ E.g. if `done' is not a file choose `done' to return the list."
   (use-local-map clingo-asp-mode-map)
   (setq-local comment-start "%")
   (setq-local comment-end "")
-  (setq-local tab-width clingo-asp-indentation))
+  (setq-local tab-width clingo-asp-indentation)
+  (run-mode-hooks))
 
 (provide 'clingo-asp-mode)
 ;;; clingo-asp-mode.el ends here
