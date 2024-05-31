@@ -57,9 +57,17 @@
     :feature function
     ([(function)] @font-lock-function-call-face)))
 
-
 (defun clingo-asp-ts-setup ()
   "Setup for `clingo-asp-ts-mode'."
+  (setq-local treesit-range-settings
+              (treesit-range-rules
+               :embed 'python
+               :host 'clingo
+               '((python (script_contents) @capture))
+
+               :embed 'lua
+               :host 'clingo
+               '((lua (script_contents) @capture))))
   (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules clingo-asp-ts-font-lock-rules))
   (setq-local font-lock-defaults nil)
   (setq-local treesit-font-lock-feature-list
