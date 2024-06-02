@@ -53,6 +53,11 @@
   :type 'integer
   :group 'clingo-asp)
 
+(defcustom clingo-asp-default-clingo-warn "all"
+  "Default warnings when calling clingo."
+  :type 'string
+  :group 'clingo-asp)
+
 
 (defvar clingo-asp-default-plists
   '((:default clingo-asp-default-clingo-outf
@@ -60,7 +65,10 @@
      :format "--outf=%s")
     (:default clingo-asp-default-clingo-models
      :match ("--models" "-n")
-     :format "--models=%s")))
+     :format "--models=%s")
+    (:default clingo-asp-default-clingo-warn
+     :match ("--warn" "-W")
+     :format "--warn=%s")))
 ;; argument defaults end
 
 ;;
@@ -128,7 +136,6 @@
         (special-mode)
         (goto-char (point-min))))))
 ;; exit code end
-
 
 
 ;; choosing arguments
@@ -207,6 +214,9 @@ Otherwise, the empty string."
 ;; choosing arguments end
 
 
+;; local-storage
+(defvar clingo-asp-clingo-buffer-list '())
+
 
 ;; calling programs
 
@@ -251,7 +261,26 @@ E.g. if `done' is not a file choose `done' to return the list."
                  :buffer clingo-buffer
                  :command (cons clingo-asp-clingo-executable args-files)
                  :sentinel (clingo-asp-clingo-process-exit clingo-process)))
+    (setq clingo-asp-clingo-buffer-list (cons clingo-buffer clingo-asp-clingo-buffer-list))
+    (with-current-buffer clingo-buffer
+      (add-hook 'kill-buffer-hook (clingo-asp-kill-clingo-buffer-hook clingo-buffer)))
     (pop-to-buffer clingo-buffer)))
+
+
+(defun clingo-asp-kill-clingo-buffer-hook (clingo-buffer)
+  "Function to be run when a created CLINGO-BUFFER is killed."
+  (lambda ()
+    (progn
+      (setq clingo-asp-clingo-buffer-list (remove clingo-buffer clingo-asp-clingo-buffer-list)))))
+
+
+(defun clingo-asp-kill-all-clingo-buffers ()
+  "Kill any live clingo buffers."
+  (interactive)
+  (if clingo-asp-clingo-buffer-list
+      (progn
+        (kill-buffer (car clingo-asp-clingo-buffer-list))
+        (clingo-asp-kill-all-clingo-buffers))))
 
 
 (defun clingo-asp-call-clingo-on-current-buffer ()
@@ -371,6 +400,7 @@ E.g. if `done' is not a file choose `done' to return the list."
 (define-key clingo-asp-mode-map (kbd "C-c C-c r") #'clingo-asp-call-clingo-on-current-region)
 (define-key clingo-asp-mode-map (kbd "C-c C-c f") #'clingo-asp-call-clingo-file-choice)
 (define-key clingo-asp-mode-map (kbd "C-c C-c F") #'clingo-asp-call-clingo-files-choice)
+(define-key clingo-asp-mode-map (kbd "C-c C-c K") #'clingo-asp-kill-all-clingo-buffers)
 
 (define-key clingo-asp-mode-map (kbd "C-c C-g b") #'clingo-asp-call-gringo-on-current-buffer)
 (define-key clingo-asp-mode-map (kbd "C-c C-g r") #'clingo-asp-call-gringo-on-current-region)
