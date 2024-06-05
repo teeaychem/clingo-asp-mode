@@ -13,7 +13,6 @@
   :group 'languages
   :prefix "clingo-asp-ts-")
 
-
 (defcustom clingo-asp-ts-mode-version "0.0.1"
   "Version of `clingo-asp-ts-mode'."
   :type 'string
@@ -24,10 +23,6 @@
   '(:language clingo
     :feature variable
     ((variable) @font-lock-variable-use-face)
-
-    :language clingo
-    :feature punctuation
-    ((dot) @font-lock-punctuation-face)
 
     :language clingo
     :feature constant
@@ -47,7 +42,7 @@
 
     :language clingo
     :feature operator
-    ([(comparison_predicate) (aggregatefunction)] @font-lock-builtin-face)
+    ([(comparison_predicate) (aggregate_function)] @font-lock-builtin-face)
 
     :language clingo
     :feature string
@@ -59,6 +54,7 @@
 
 (defun clingo-asp-ts-setup ()
   "Setup for `clingo-asp-ts-mode'."
+
   (setq-local treesit-range-settings
               (treesit-range-rules
                :embed 'python
@@ -68,8 +64,7 @@
                :embed 'lua
                :host 'clingo
                '((lua (script_contents) @capture))))
-  (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules clingo-asp-ts-font-lock-rules))
-  (setq-local font-lock-defaults nil)
+
   (setq-local treesit-font-lock-feature-list
               '((punctuation
                  variable
@@ -80,15 +75,19 @@
                  operator
                  function
                  string)))
+
+    (setq-local treesit-font-lock-settings
+                (apply #'treesit-font-lock-rules clingo-asp-ts-font-lock-rules))
+
   (treesit-major-mode-setup))
 
 
 ;;; define clingo-asp-ts-mode
 ;;;###autoload
 (define-derived-mode clingo-asp-ts-mode clingo-asp-mode "clingo-asp-ts"
-  (setq-local font-lock-defaults nil)
   (setq-local major-mode 'clingo-asp-ts-mode)
   (setq-local mode-name "Clingo ASP")
+  (setq-local font-lock-defaults nil)
   (when (treesit-ready-p 'clingo)
     (treesit-parser-create 'clingo)
     (clingo-asp-ts-setup)))

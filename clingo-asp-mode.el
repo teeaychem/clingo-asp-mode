@@ -73,7 +73,7 @@
 
 ;;
 (defcustom clingo-asp-mode-hook nil
-  "Hooks called when clingo-asp-mode is enabled."
+  "Hooks called when `clingo-asp-mode' is enabled."
   :type 'hook
   :group 'clingo-asp)
 ;;
