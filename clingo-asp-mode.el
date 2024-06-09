@@ -283,7 +283,7 @@ E.g. if `done' is not a file choose `done' to return the list."
         (clingo-asp-kill-all-clingo-buffers))))
 
 
-(defun clingo-asp-call-clingo-on-current-buffer ()
+(defun clingo-asp-call-clingo-on-buffer-file ()
   "Call `clingo-asp-call-clingo-choice' on the file opened in the current buffer."
   (interactive)
   (let ((this-file (buffer-file-name)))
@@ -396,7 +396,7 @@ E.g. if `done' is not a file choose `done' to return the list."
 ;; keymap
 (defvar clingo-asp-mode-map (make-sparse-keymap)  "Keymap for `clingo-asp-mode'.")
 
-(define-key clingo-asp-mode-map (kbd "C-c C-c b") #'clingo-asp-call-clingo-on-current-buffer)
+(define-key clingo-asp-mode-map (kbd "C-c C-c b") #'clingo-asp-call-clingo-on-buffer-file)
 (define-key clingo-asp-mode-map (kbd "C-c C-c r") #'clingo-asp-call-clingo-on-current-region)
 (define-key clingo-asp-mode-map (kbd "C-c C-c f") #'clingo-asp-call-clingo-file-choice)
 (define-key clingo-asp-mode-map (kbd "C-c C-c F") #'clingo-asp-call-clingo-files-choice)
