@@ -26,6 +26,16 @@
   :type 'string
   :group 'clingo-asp)
 
+(defcustom clingo-asp-reuse-clingo-buffer t
+  "If a buffer from a clingo call exists, clear and reuse on a new solve."
+  :type 'boolean
+  :group 'clingo-asp)
+
+(defcustom clingo-asp-reuse-gringo-buffer t
+  "If a buffer from a gringo call exists, clear and reuse on a new solve."
+  :type 'boolean
+  :group 'clingo-asp)
+
 (defcustom clingo-asp-indentation 2
   "Level of indentation."
   :type 'integer
@@ -114,16 +124,20 @@
     (format "%s (%s)" code-sym code-exp)))
 
 
-(defun clingo-asp-clingo-process-exit (process-name)
-  "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits."
+(defun clingo-asp-clingo-process-exit (process-name process-buffer)
+  "Use with `set-process-sentinel' to perform actions after PROCESS-NAME exits.
+PROCESS-BUFFER is the buffer for the process output."
   (lambda (process event)
-    (let ((process-buffer (get-buffer process-name)))
-      (with-current-buffer process-buffer
-            (special-mode)
-            (goto-char (point-min)))
-      (if (and (> (length event) 27)
-               (equal (substring event 0 27) "exited abnormally with code"))
-          (princ (format "Process: %s exited with: %s" process (clingo-asp-decode-exit (string-to-number (car (last (split-string event)))))))))))
+    (if (and (> (length event) 27)
+             (equal (substring event 0 27) "exited abnormally with code"))
+        (princ (format "Process: %s exited with: %s" process (clingo-asp-decode-exit (string-to-number (car (last (split-string event))))))))
+    (let ((the-process-buffer (if clingo-asp-reuse-clingo-buffer
+                                  process-buffer
+                                (get-buffer process-name))))
+      (with-current-buffer the-process-buffer
+        (goto-char (point-max))
+        (insert "---\n")
+        ))))
 
 
 (defun clingo-asp-gringo-process-exit (process-name)
@@ -160,6 +174,18 @@
      :evaluate t
      :commands (string-split (format "--models=%s" (read-string "Number of models:")))
      :help "--models=(prompt: n)")
+    (:name "optimal model"
+     :evaluate nil
+     :commands ("--opt-mode=opt")
+     :help "")
+    (:name "enumerate optimal models"
+     :evaluate nil
+     :commands ("--opt-mode=optN")
+     :help "")
+    (:name "ignore optimize statements"
+     :evaluate nil
+     :commands ("--opt-mode=ignore")
+     :help "")
     (:name "help"
      :evaluate t
      :commands (string-split (format "--help=%s" (eval clingo-asp-default-clingo-help)))
@@ -217,7 +243,6 @@ Otherwise, the empty string."
 ;; local-storage
 (defvar clingo-asp-clingo-buffer-list '())
 
-
 ;; calling programs
 
 ;; ;; helpers
@@ -255,16 +280,28 @@ E.g. if `done' is not a file choose `done' to return the list."
   "Run clingo on FILES with ARGS as a new process with it's own buffer."
   (let* ((args-files (append (clingo-asp-add-defaults args) (mapcar #'file-truename files)))
          (clingo-process (generate-new-buffer-name "*clingo*"))
-         (clingo-buffer (get-buffer-create clingo-process)))
+         (clingo-buffer (if clingo-asp-reuse-clingo-buffer
+                            (if (get-buffer "*cligo*")
+                                (get-buffer "*cligo*")
+                              (let ((new-buffer (get-buffer-create "*clingo*")))
+                                (princ "a new clingo buffer")
+                                (with-current-buffer new-buffer
+                                  (insert "\n")
+                                  (special-mode)
+                                  (setq buffer-read-only nil))
+                                new-buffer))
+                          (get-buffer-create clingo-process))))
     (apply #'make-process
            (list :name clingo-process
                  :buffer clingo-buffer
                  :command (cons clingo-asp-clingo-executable args-files)
-                 :sentinel (clingo-asp-clingo-process-exit clingo-process)))
-    (setq clingo-asp-clingo-buffer-list (cons clingo-buffer clingo-asp-clingo-buffer-list))
-    (with-current-buffer clingo-buffer
-      (add-hook 'kill-buffer-hook (clingo-asp-kill-clingo-buffer-hook clingo-buffer)))
-    (pop-to-buffer clingo-buffer)))
+                 :sentinel (clingo-asp-clingo-process-exit clingo-process clingo-buffer)))
+    (if (not clingo-asp-reuse-clingo-buffer)
+        (progn
+          (setq clingo-asp-clingo-buffer-list (cons clingo-buffer clingo-asp-clingo-buffer-list))
+          (with-current-buffer clingo-buffer
+            (add-hook 'kill-buffer-hook (clingo-asp-kill-clingo-buffer-hook clingo-buffer)))))
+    (display-buffer clingo-buffer)))
 
 
 (defun clingo-asp-kill-clingo-buffer-hook (clingo-buffer)
@@ -319,7 +356,9 @@ E.g. if `done' is not a file choose `done' to return the list."
   "Run gringo on FILES with ARGS as a new process with it's own buffer."
   (let* ((args-files (append args (mapcar #'file-truename files)))
          (gringo-process (generate-new-buffer-name "*gringo*"))
-         (gringo-buffer (get-buffer-create gringo-process)))
+         (gringo-buffer (if clingo-asp-reuse-gringo-buffer
+                            (get-buffer-create "*gringo*")
+                          (get-buffer-create gringo-process))))
     (apply #'make-process
            (list :name gringo-process
                  :buffer gringo-buffer
