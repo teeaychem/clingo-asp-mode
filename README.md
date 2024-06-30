@@ -31,6 +31,6 @@ Install `tree-sitter-clingo`: https://github.com/teeaychem/tree-sitter-clingo to
 
 # Notes
 
-built with the help of Mickey Ptersen's guide to writing a tree-sitter major mode https://www.masteringemacs.org/article/lets-write-a-treesitter-major-mode
+built with the help of Mickey Petersen's guide to writing a tree-sitter major mode https://www.masteringemacs.org/article/lets-write-a-treesitter-major-mode
 
 parts inspired by pasp-mode https://github.com/santifa/pasp-mode
