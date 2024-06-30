@@ -320,11 +320,14 @@ E.g. if `done' is not a file choose `done' to return the list."
         (clingo-asp-kill-all-clingo-buffers))))
 
 
-(defun clingo-asp-call-clingo-on-buffer-file ()
-  "Call `clingo-asp-call-clingo-choice' on the file opened in the current buffer."
+(defun clingo-asp-call-clingo-on-buffer ()
+  "Call `clingo-asp-call-clingo-choice' on the current buffer contents."
   (interactive)
-  (let ((this-file (buffer-file-name)))
-    (clingo-asp-call-clingo-choice (list this-file))))
+  (let ((temp-file (make-temp-file "clingo-buffer" nil ".lp" nil)))
+    (write-region (point-min) (point-max) temp-file t)
+    (clingo-asp-call-clingo-choice (list temp-file))))
+  ;; (let ((this-file (buffer-file-name)))
+  ;;   (clingo-asp-call-clingo-choice (list this-file))))
 
 
 (defun clingo-asp-call-clingo-on-current-region (start end)
@@ -366,12 +369,12 @@ E.g. if `done' is not a file choose `done' to return the list."
                  :sentinel (clingo-asp-gringo-process-exit gringo-process)))
     (pop-to-buffer gringo-buffer)))
 
-
-(defun clingo-asp-call-gringo-on-current-buffer ()
-  "Call `clingo-asp-call-gringo-choice' on the file opened in the current buffer."
+(defun clingo-asp-call-gringo-on-buffer ()
+  "Call `clingo-asp-call-gringo-choice' on the current buffer contents."
   (interactive)
-  (let ((this-file (buffer-file-name)))
-    (clingo-asp-call-gringo-choice (list this-file))))
+  (let ((temp-file (make-temp-file "clingo-buffer" nil ".lp" nil)))
+    (write-region (point-min) (point-max) temp-file t)
+    (clingo-asp-call-clingo-choice (list temp-file))))
 
 
 (defun clingo-asp-call-gringo-on-current-region (start end)
@@ -435,13 +438,13 @@ E.g. if `done' is not a file choose `done' to return the list."
 ;; keymap
 (defvar clingo-asp-mode-map (make-sparse-keymap)  "Keymap for `clingo-asp-mode'.")
 
-(define-key clingo-asp-mode-map (kbd "C-c C-c b") #'clingo-asp-call-clingo-on-buffer-file)
+(define-key clingo-asp-mode-map (kbd "C-c C-c b") #'clingo-asp-call-clingo-on-buffer)
 (define-key clingo-asp-mode-map (kbd "C-c C-c r") #'clingo-asp-call-clingo-on-current-region)
 (define-key clingo-asp-mode-map (kbd "C-c C-c f") #'clingo-asp-call-clingo-file-choice)
 (define-key clingo-asp-mode-map (kbd "C-c C-c F") #'clingo-asp-call-clingo-files-choice)
 (define-key clingo-asp-mode-map (kbd "C-c C-c K") #'clingo-asp-kill-all-clingo-buffers)
 
-(define-key clingo-asp-mode-map (kbd "C-c C-g b") #'clingo-asp-call-gringo-on-current-buffer)
+(define-key clingo-asp-mode-map (kbd "C-c C-g b") #'clingo-asp-call-gringo-on-buffer)
 (define-key clingo-asp-mode-map (kbd "C-c C-g r") #'clingo-asp-call-gringo-on-current-region)
 (define-key clingo-asp-mode-map (kbd "C-c C-g f") #'clingo-asp-call-gringo-file-choice)
 (define-key clingo-asp-mode-map (kbd "C-c C-g F") #'clingo-asp-call-gringo-files-choice)
